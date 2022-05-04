@@ -1,13 +1,9 @@
 # ansible-docker-swarm 
 
 [![Say Thanks!](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/ruan.ru.bekker@gmail.com)
-[![Slack Status](https://linux-hackers-slack.herokuapp.com/badge.svg)](https://linux-hackers-slack.herokuapp.com/)
-[![Chat on Slack](https://img.shields.io/badge/chat-on_slack-orange.svg)](https://linux-hackers-slack.herokuapp.com/)
 
 
 Setup Docker Swarm with Ansible.
-
-In this setup I have a client node, which will be my jump box, as it will be used to ssh with the docker user to my swarm nodes with passwordless ssh access.
 
 ## Pre-Check
 
