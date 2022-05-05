@@ -1,0 +1,5 @@
+---
+- name: initialize docker swarm
+  hosts: admin
+  roles:
+    - docker-swarm-kongkonga-deploy

@@ -1,0 +1,4 @@
+---
+- name: Deploy Kong KONGA, DB & SSL
+  shell: docker stack deploy --compose-file=ansible-docker-swarm/kong-compose-swarm.yaml kong
+  tags: swarm

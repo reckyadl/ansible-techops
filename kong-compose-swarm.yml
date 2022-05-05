@@ -1,0 +1,125 @@
+version: '3.3'
+
+services:
+  kong-database:
+    image: postgres:9.6.11-alpine
+    container_name: kong-database
+    volumes:
+      - kong_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_DB: kong
+    healthcheck:
+      test: pg_isready -U kong && psql -d kong -U kong -c "SELECT 1=1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels: [APP=kong-database]
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints: [node.role == manager]
+
+
+  kong-migration:
+    image: kong:2.0.0
+    container_name: kong-migration
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+    command: sh -c "(kong migrations up || kong migrations bootstrap) && sleep 30"
+    healthcheck:
+      test: "ip add"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels: [APP=kong-migration]
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints: [node.role == manager]
+
+
+  kong:
+    image: kong:2.0.0
+    container_name: kong
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_LOG_LEVEL: debug
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001, 0.0.0.0:8444 ssl
+      # ssl config
+      KONG_SSL_CERT: /certs/server.crt
+      KONG_SSL_CERT_KEY: /certs/server.key
+      KONG_ADMIN_SSL_CERT: /certs/server.crt
+      KONG_ADMIN_SSL_CERT_KEY: /certs/server.key
+      KONG_SSL: "on"
+    ports:
+      - 8000:8000
+      - 8443:8443
+    volumes:
+      - ./cert:/certs
+    healthcheck:
+      test: kong health
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  konga-database:
+    image: mongo:4.1.5
+    container_name: konga-database
+    volumes:
+      - konga_data:/data/db
+    ports:
+      - 27017:27017
+    healthcheck:
+      test: echo 'db.stats().ok' | mongo localhost:27017/konga --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels: [APP=konga-database]
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints: [node.role == manager]
+  konga:
+    image: pantsel/konga:latest
+    container_name: konga
+    volumes:
+      - ./konga/user_seed.js:/app/user_seed.js:ro
+    ports:
+      - 1337:1337
+    environment:
+      DB_ADAPTER: mongo
+      DB_DATABASE: konga
+      DB_HOST: konga-database
+      KONGA_SEED_USER_DATA_SOURCE_FILE: /app/user_seed.js
+      NODE_ENV: production
+    restart: on-failure
+
+volumes:
+  kong_data:
+  konga_data:
